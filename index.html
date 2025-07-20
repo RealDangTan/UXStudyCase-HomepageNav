@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Draggable Dot Navigator</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      background: linear-gradient(135deg, #000 0%, #1a1a1a 100%);
+      overflow: hidden;
+      color: white;
+      transition: background 0.5s ease;
+      position: relative;
+    }
+
+    .page-display {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 120px; /* Space for navigator */
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+    }
+
+    .page-container {
+      position: absolute;
+      width: 100vw;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .page-content {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      width: 90vw;
+      max-width: 500px;
+      height: auto;
+      padding: 2rem;
+      box-sizing: border-box;
+      text-align: center;
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+
+    .page-content.active-page {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+      transform: translate(-50%, -50%) scale(1);
+    }
+
+    .page-title {
+      font-size: 3rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+
+    .app-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1.5rem;
+      max-width: 320px;
+      width: 100%;
+      margin: 2rem 0;
+    }
+
+    .app-icon {
+      width: 60px;
+      height: 60px;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      color: white;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+
+    .app-icon:hover {
+      transform: scale(1.05);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+    }
+
+    .navigator {
+      position: absolute;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 1.2rem;
+      background: rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 999px;
+      padding: 0.8rem 1.5rem;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+      -webkit-backdrop-filter: blur(20px);
+      backdrop-filter: blur(20px);
+      width: fit-content;
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+      cursor: pointer;
+      z-index: 1000;
+    }
+
+    .dot {
+      width: 6px;
+      height: 6px;
+      background-color: rgba(255, 255, 255, 0.5);
+      border-radius: 50%;
+      transition: all 0.3s ease;
+      cursor: pointer;
+      position: relative;
+      z-index: 2;
+    }
+
+    .dot:hover {
+      background-color: rgba(255, 255, 255, 0.7);
+      transform: scale(1.3);
+    }
+
+    .dot.active {
+      background-color: rgba(255, 255, 255, 0.9);
+      transform: scale(1.5);
+    }
+
+    .draggable-dot {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 20px;
+      height: 20px;
+      background: linear-gradient(135deg, #007AFF, #0051D5);
+      border-radius: 50%;
+      box-shadow: 0 4px 16px rgba(0, 122, 255, 0.5);
+      cursor: grab;
+      border: 2px solid rgba(255, 255, 255, 0.8);
+      transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      z-index: 3;
+      -webkit-backdrop-filter: blur(10px);
+      backdrop-filter: blur(10px);
+    }
+
+    .draggable-dot:active {
+      cursor: grabbing;
+      transform: translateY(-50%) scale(1.2);
+      box-shadow: 0 6px 20px rgba(0, 122, 255, 0.7);
+    }
+
+    .dragging .draggable-dot {
+      box-shadow: 0 8px 24px rgba(0, 122, 255, 0.9);
+      transform: translateY(-50%) scale(1.25);
+      border-color: rgba(255, 255, 255, 1);
+    }
+
+    /* Responsive design */
+    @media (max-width: 768px) {
+      .page-display {
+        height: calc(100vh - 100px);
+      }
+      
+      .page-title {
+        font-size: 2.5rem;
+      }
+      
+      .app-grid {
+        max-width: 280px;
+        gap: 1.2rem;
+      }
+      
+      .app-icon {
+        width: 55px;
+        height: 55px;
+        font-size: 1.3rem;
+      }
+      
+      .navigator {
+        gap: 1rem;
+        padding: 0.7rem 1.3rem;
+        bottom: 1.5rem;
+      }
+      
+      .dot {
+        width: 5px;
+        height: 5px;
+      }
+      
+      .draggable-dot {
+        width: 18px;
+        height: 18px;
+        border: 2px solid rgba(255, 255, 255, 0.8);
+      }
+    }
+
+    @media (max-width: 480px) {
+      .page-display {
+        height: calc(100vh - 80px);
+      }
+      
+      .page-title {
+        font-size: 2rem;
+      }
+      
+      .app-grid {
+        max-width: 240px;
+        gap: 1rem;
+      }
+      
+      .app-icon {
+        width: 50px;
+        height: 50px;
+        font-size: 1.2rem;
+      }
+      
+      .navigator {
+        gap: 0.8rem;
+        padding: 0.6rem 1.1rem;
+        bottom: 1rem;
+      }
+      
+      .dot {
+        width: 4px;
+        height: 4px;
+      }
+      
+      .draggable-dot {
+        width: 16px;
+        height: 16px;
+        border: 1.5px solid rgba(255, 255, 255, 0.8);
+      }
+    }
+
+    /* Accessibility improvements */
+    .navigator:focus-within {
+      outline: 2px solid #007AFF;
+      outline-offset: 2px;
+    }
+
+    .dot:focus {
+      outline: 2px solid #007AFF;
+      outline-offset: 2px;
+    }
+
+    .draggable-dot:focus {
+      outline: 2px solid #007AFF;
+      outline-offset: 3px;
+    }
+
+    /* Page transition effects */
+    .page-container.transitioning {
+      transition: none !important;
+    }
+
+    .dragging .page-container {
+      transition: none !important;
+    }
+
+    /* Smooth page sliding during drag */
+    .page-container.smooth-drag {
+      transition: transform 0.1s ease-out;
+    }
+
+    /* Footer */
+    .footer {
+      position: absolute;
+      bottom: 90px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.8rem;
+      color: rgba(255, 255, 255, 0.6);
+      text-align: center;
+      z-index: 999;
+      pointer-events: none;
+      font-weight: 300;
+      letter-spacing: 0.5px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="page-display" id="pageDisplay">
+    <div class="page-container" id="pageContainer">
+      <div class="page-content active-page" data-page="0">
+        <div class="page-title">Home</div>
+        <div class="app-grid">
+          <div class="app-icon" style="background: linear-gradient(135deg, #FF3B30, #FF9500);">📱</div>
+          <div class="app-icon" style="background: linear-gradient(135deg, #007AFF, #5AC8FA);">📧</div>
+          <div class="app-icon" style="background: linear-gradient(135deg, #34C759, #30D158);">📞</div>
+          <div class="app-icon" style="background: linear-gradient(135deg, #FF9500, #FFCC02);">💬</div>
+          <div class="app-icon" style="background: linear-gradient(135deg, #5856D6, #AF52DE);">📷</div>
+          <div class="app-icon" style="background: linear-gradient(135deg, #FF2D92, #FF375F);">🎵</div>
+          <div class="app-icon" style="background: linear-gradient(135deg, #32D74B, #30DB5B);">🗺️</div>
+          <div class="app-icon" style="background: linear-gradient(135deg, #007AFF, #40C8E0);">☁️</div>
+        </div>
+      </div>
+      
+      <div class="page-content" data-page="1">
+        <div class="page-title">Productivity</div>
+        <div class="app-grid">
+          <div class="app-icon" style="background: linear-gradient(135deg, #FF6B35, #F7931E);">📝</div>
+          <div class="app-icon" style="background: linear-gradient(135deg, #5AC8FA, #007AFF);">📊</div>
+          <div class="app-icon" style="background: linear-gradient(135deg, #34C759, #30D158);">💰</div>
+          <div class="app-icon" style="background: linear-gradient(135deg, #AF52DE, #5856D6);">⏰</div>
+          <div class="app-icon" style="background: linear-gradient(135deg, #FF9500, #FFCC02);">📅</div>
+          <div class="app-icon" style="background: linear-gradient(135deg, #FF375F, #FF2D92);">📋</div>
+          <div class="app-icon" style="background: linear-gradient(135deg, #32D74B, #30DB5B);">🔐</div>
+          <div class="app-icon" style="background: linear-gradient(135deg, #40C8E0, #007AFF);">☁️</div>
+        </div>
+      </div>
+      
+      <div class="page-content" data-page="2">
+        <div class="page-title">Entertainment</div>
+        <div class="app-grid">
+          <div class="app-icon" style="background: linear-gradient(135deg, #E50914, #FF6B6B);">🎬</div>
+          <div class="app-icon" style="background: linear-gradient(135deg, #1DB954, #1ED760);">🎶</div>
+          <div class="app-icon" style="background: linear-gradient(135deg, #FF0050, #FF4081);">📺</div>
+          <div class="app-icon" style="background: linear-gradient(135deg, #9146FF, #A970FF);">🎮</div>
+          <div class="app-icon" style="background: linear-gradient(135deg, #FF6B35, #F7931E);">📚</div>
+          <div class="app-icon" style="background: linear-gradient(135deg, #FF9500, #FFCC02);">🎨</div>
+          <div class="app-icon" style="background: linear-gradient(135deg, #5856D6, #AF52DE);">📸</div>
+          <div class="app-icon" style="background: linear-gradient(135deg, #007AFF, #5AC8FA);">🌐</div>
+        </div>
+      </div>
+      
+      <div class="page-content" data-page="3">
+        <div class="page-title">Social</div>
+        <div class="app-grid">
+          <div class="app-icon" style="background: linear-gradient(135deg, #1877F2, #42A5F5);">👥</div>
+          <div class="app-icon" style="background: linear-gradient(135deg, #E4405F, #F77737);">📷</div>
+          <div class="app-icon" style="background: linear-gradient(135deg, #1DA1F2, #1976D2);">🐦</div>
+          <div class="app-icon" style="background: linear-gradient(135deg, #25D366, #128C7E);">💬</div>
+          <div class="app-icon" style="background: linear-gradient(135deg, #0077B5, #00A0DC);">💼</div>
+          <div class="app-icon" style="background: linear-gradient(135deg, #FF0050, #FF4081);">💕</div>
+          <div class="app-icon" style="background: linear-gradient(135deg, #FFFC00, #FFD600);">👻</div>
+          <div class="app-icon" style="background: linear-gradient(135deg, #FF6B35, #F7931E);">🔥</div>
+        </div>
+      </div>
+      
+      <div class="page-content" data-page="4">
+        <div class="page-title">Travel & Food</div>
+        <div class="app-grid">
+          <div class="app-icon" style="background: linear-gradient(135deg, #FF5A5F, #FF385C);">🏠</div>
+          <div class="app-icon" style="background: linear-gradient(135deg, #00B2A0, #00D4AA);">✈️</div>
+          <div class="app-icon" style="background: linear-gradient(135deg, #FF6B35, #F7931E);">🍕</div>
+          <div class="app-icon" style="background: linear-gradient(135deg, #34C759, #30D158);">🚗</div>
+          <div class="app-icon" style="background: linear-gradient(135deg, #5856D6, #AF52DE);">🗺️</div>
+          <div class="app-icon" style="background: linear-gradient(135deg, #FF9500, #FFCC02);">☕</div>
+          <div class="app-icon" style="background: linear-gradient(135deg, #007AFF, #5AC8FA);">🏨</div>
+          <div class="app-icon" style="background: linear-gradient(135deg, #FF375F, #FF2D92);">🍔</div>
+        </div>
+      </div>
+      
+      <div class="page-content" data-page="5">
+        <div class="page-title">Health & Fitness</div>
+        <div class="app-grid">
+          <div class="app-icon" style="background: linear-gradient(135deg, #FF3B30, #FF6B6B);">❤️</div>
+          <div class="app-icon" style="background: linear-gradient(135deg, #34C759, #30D158);">🏃</div>
+          <div class="app-icon" style="background: linear-gradient(135deg, #007AFF, #5AC8FA);">💧</div>
+          <div class="app-icon" style="background: linear-gradient(135deg, #FF9500, #FFCC02);">🧘</div>
+          <div class="app-icon" style="background: linear-gradient(135deg, #AF52DE, #5856D6);">😴</div>
+          <div class="app-icon" style="background: linear-gradient(135deg, #32D74B, #30DB5B);">🥗</div>
+          <div class="app-icon" style="background: linear-gradient(135deg, #FF375F, #FF2D92);">⚖️</div>
+          <div class="app-icon" style="background: linear-gradient(135deg, #40C8E0, #007AFF);">🏥</div>
+        </div>
+      </div>
+      
+      <div class="page-content" data-page="6">
+        <div class="page-title">Utilities</div>
+        <div class="app-grid">
+          <div class="app-icon" style="background: linear-gradient(135deg, #8E8E93, #636366);">⚙️</div>
+          <div class="app-icon" style="background: linear-gradient(135deg, #FF9500, #FFCC02);">🔦</div>
+          <div class="app-icon" style="background: linear-gradient(135deg, #34C759, #30D158);">🔋</div>
+          <div class="app-icon" style="background: linear-gradient(135deg, #007AFF, #5AC8FA);">📶</div>
+          <div class="app-icon" style="background: linear-gradient(135deg, #5856D6, #AF52DE);">🔒</div>
+          <div class="app-icon" style="background: linear-gradient(135deg, #FF375F, #FF2D92);">🗂️</div>
+          <div class="app-icon" style="background: linear-gradient(135deg, #32D74B, #30DB5B);">🧹</div>
+          <div class="app-icon" style="background: linear-gradient(135deg, #FF6B35, #F7931E);">🔍</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    UXNavBar by Dang Tan (With Claude)
+  </div>
+
+  <div class="navigator" id="navigator">
+    <div class="dot" data-index="0" tabindex="0" role="button" aria-label="Go to page 1"></div>
+    <div class="dot" data-index="1" tabindex="0" role="button" aria-label="Go to page 2"></div>
+    <div class="dot" data-index="2" tabindex="0" role="button" aria-label="Go to page 3"></div>
+    <div class="dot" data-index="3" tabindex="0" role="button" aria-label="Go to page 4"></div>
+    <div class="dot" data-index="4" tabindex="0" role="button" aria-label="Go to page 5"></div>
+    <div class="dot" data-index="5" tabindex="0" role="button" aria-label="Go to page 6"></div>
+    <div class="dot" data-index="6" tabindex="0" role="button" aria-label="Go to page 7"></div>
+    <div class="draggable-dot" id="dragDot" tabindex="0" role="slider" aria-label="Page navigator" aria-valuemin="1" aria-valuemax="7" aria-valuenow="1"></div>
+  </div>
+
+  <script>
+    const PAGE_COUNT = 7;
+    const dots = document.querySelectorAll('.dot');
+    const dragDot = document.getElementById('dragDot');
+    const pageDisplay = document.getElementById('pageDisplay');
+    const pageContainer = document.getElementById('pageContainer');
+    const navigator = document.getElementById('navigator');
+    const pageContents = document.querySelectorAll('.page-content');
+
+    let currentIndex = 0;
+    let isDragging = false;
+    let startX = 0;
+    let startLeft = 0;
+    let dotPositions = [];
+    let dragThreshold = 10; // Minimum drag distance before considering it a drag
+
+    // Dynamic background colors for each page
+    const pageBackgrounds = [
+      'linear-gradient(135deg, #000 0%, #1a1a1a 100%)', // Home - Dark
+      'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)', // Productivity - Blue Dark
+      'linear-gradient(135deg, #2d1b69 0%, #11998e 100%)', // Entertainment - Purple Teal
+      'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', // Social - Blue Purple
+      'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', // Travel & Food - Pink
+      'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', // Health & Fitness - Blue Cyan
+      'linear-gradient(135deg, #667db6 0%, #0082c8 100%)', // Utilities - Blue
+    ];
+
+    // Calculate actual dot positions
+    function calculateDotPositions() {
+      dotPositions = [];
+      dots.forEach((dot, index) => {
+        const rect = dot.getBoundingClientRect();
+        const navRect = navigator.getBoundingClientRect();
+        dotPositions.push(rect.left - navRect.left + rect.width / 2 - dragDot.offsetWidth / 2);
+      });
+    }
+
+    function showPage(index, animate = true) {
+      if (index < 0 || index >= PAGE_COUNT) return;
+      
+      // Simple show/hide approach - only show the active page
+      pageContents.forEach((page, pageIndex) => {
+        if (pageIndex === index) {
+          page.classList.add('active-page');
+        } else {
+          page.classList.remove('active-page');
+        }
+      });
+    }
+
+    function setPage(index, animate = true) {
+      if (index < 0 || index >= PAGE_COUNT) return;
+      
+      currentIndex = index;
+      
+      // Update dots
+      dots.forEach(dot => dot.classList.remove('active'));
+      dots[index].classList.add('active');
+      
+      // Show the appropriate page with seamless sliding
+      showPage(index, animate);
+      
+      // Animate draggable dot
+      if (animate) {
+        dragDot.style.transition = 'left 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+      } else {
+        dragDot.style.transition = 'none';
+      }
+      
+      dragDot.style.left = `${dotPositions[index]}px`;
+      
+      // Update dynamic background
+      document.body.style.background = pageBackgrounds[index];
+      
+      updateAriaAttributes();
+    }
+
+    function findNearestDot(position) {
+      let nearestIndex = 0;
+      let minDistance = Math.abs(position - dotPositions[0]);
+      
+      for (let i = 1; i < dotPositions.length; i++) {
+        const distance = Math.abs(position - dotPositions[i]);
+        if (distance < minDistance) {
+          minDistance = distance;
+          nearestIndex = i;
+        }
+      }
+      
+      return nearestIndex;
+    }
+
+    // Function to calculate position from click coordinates
+    function getPositionFromClick(clientX) {
+      const navRect = navigator.getBoundingClientRect();
+      const relativeX = clientX - navRect.left;
+      const navWidth = navRect.width - (2 * parseFloat(getComputedStyle(navigator).paddingLeft));
+      const progress = Math.max(0, Math.min(1, (relativeX - parseFloat(getComputedStyle(navigator).paddingLeft)) / navWidth));
+      
+      const minLeft = dotPositions[0];
+      const maxLeft = dotPositions[dotPositions.length - 1];
+      const targetLeft = minLeft + (progress * (maxLeft - minLeft));
+      
+      return Math.max(minLeft, Math.min(targetLeft, maxLeft));
+    }
+
+    // Enhanced drag functionality with simple page switching
+    function handleDragMove(position) {
+      const delta = position - startX;
+      let newLeft = startLeft + delta;
+      const minLeft = dotPositions[0];
+      const maxLeft = dotPositions[dotPositions.length - 1];
+      newLeft = Math.max(minLeft, Math.min(newLeft, maxLeft));
+      dragDot.style.left = `${newLeft}px`;
+      
+      // Update dynamic background during drag
+      const nearestIndex = findNearestDot(newLeft);
+      document.body.style.background = pageBackgrounds[nearestIndex] || pageBackgrounds[0];
+      
+      // Update active dot and page based on nearest position
+      if (nearestIndex !== currentIndex) {
+        currentIndex = nearestIndex;
+        
+        // Update dots with smooth transition
+        dots.forEach((dot, index) => {
+          dot.classList.toggle('active', index === nearestIndex);
+        });
+        
+        // Update page focus - simple show/hide
+        pageContents.forEach((page, pageIndex) => {
+          if (pageIndex === nearestIndex) {
+            page.classList.add('active-page');
+          } else {
+            page.classList.remove('active-page');
+          }
+        });
+        
+        updateAriaAttributes();
+      }
+    }
+
+    // Click anywhere on navigator to move dot
+    navigator.addEventListener('mousedown', (e) => {
+      // Check if clicking on the draggable dot itself
+      if (e.target === dragDot) {
+        // Handle draggable dot mousedown
+        e.preventDefault();
+        e.stopPropagation();
+        isDragging = true;
+        startX = e.clientX;
+        startLeft = dragDot.offsetLeft;
+        dragDot.style.transition = 'none';
+        pageContainer.style.transition = 'none';
+        navigator.classList.add('dragging');
+        document.body.style.cursor = 'grabbing';
+        return;
+      }
+      
+      // Click anywhere else on navigator
+      e.preventDefault();
+      e.stopPropagation();
+      
+      const targetPosition = getPositionFromClick(e.clientX);
+      const nearestIndex = findNearestDot(targetPosition);
+      
+      // Move dot instantly to clicked position
+      dragDot.style.transition = 'none';
+      dragDot.style.left = `${targetPosition}px`;
+      
+      // Immediately update page and background
+      setPage(nearestIndex, true);
+      
+      // Start dragging from the new position immediately
+      isDragging = true;
+      startX = e.clientX;
+      startLeft = targetPosition;
+      pageContainer.style.transition = 'none';
+      navigator.classList.add('dragging');
+      document.body.style.cursor = 'grabbing';
+    });
+
+    // Enhanced mouse move with click-and-drag support
+    document.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      e.preventDefault();
+      
+      // Check if we've moved enough to consider this a drag
+      const distance = Math.abs(e.clientX - startX);
+      if (distance > dragThreshold) {
+        handleDragMove(e.clientX);
+      }
+    });
+
+    document.addEventListener('mouseup', (e) => {
+      if (!isDragging) return;
+      isDragging = false;
+      navigator.classList.remove('dragging');
+      document.body.style.cursor = '';
+      
+      // Snap to nearest position
+      const index = findNearestDot(dragDot.offsetLeft);
+      setPage(index, true);
+    });
+
+    // Touch events for mobile with enhanced click support
+    navigator.addEventListener('touchstart', (e) => {
+      const touch = e.touches[0];
+      
+      // Check if touching the draggable dot itself
+      if (e.target === dragDot) {
+        // Handle draggable dot touchstart
+        e.preventDefault();
+        isDragging = true;
+        startX = touch.clientX;
+        startLeft = dragDot.offsetLeft;
+        dragDot.style.transition = 'none';
+        pageContainer.style.transition = 'none';
+        navigator.classList.add('dragging');
+        return;
+      }
+      
+      // Touch anywhere else on navigator
+      e.preventDefault();
+      const targetPosition = getPositionFromClick(touch.clientX);
+      const nearestIndex = findNearestDot(targetPosition);
+      
+      // Move dot instantly to touched position
+      dragDot.style.transition = 'none';
+      dragDot.style.left = `${targetPosition}px`;
+      
+      // Immediately update page and background
+      setPage(nearestIndex, true);
+      
+      // Start dragging from the new position immediately
+      isDragging = true;
+      startX = touch.clientX;
+      startLeft = targetPosition;
+      pageContainer.style.transition = 'none';
+      navigator.classList.add('dragging');
+    });
+
+    document.addEventListener('touchmove', (e) => {
+      if (!isDragging) return;
+      e.preventDefault();
+      const touch = e.touches[0];
+      
+      const distance = Math.abs(touch.clientX - startX);
+      if (distance > dragThreshold) {
+        handleDragMove(touch.clientX);
+      }
+    }, { passive: false });
+
+    document.addEventListener('touchend', () => {
+      if (!isDragging) return;
+      isDragging = false;
+      navigator.classList.remove('dragging');
+      
+      const index = findNearestDot(dragDot.offsetLeft);
+      setPage(index, true);
+    });
+
+    // Click on dots to navigate (keeping original functionality)
+    dots.forEach((dot, index) => {
+      dot.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!isDragging) {
+          setPage(index);
+        }
+      });
+      
+      // Keyboard support for dots
+      dot.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          setPage(index);
+        }
+      });
+    });
+
+    // Keyboard navigation for draggable dot
+    dragDot.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft' && currentIndex > 0) {
+        e.preventDefault();
+        setPage(currentIndex - 1);
+      } else if (e.key === 'ArrowRight' && currentIndex < PAGE_COUNT - 1) {
+        e.preventDefault();
+        setPage(currentIndex + 1);
+      } else if (e.key === 'Home') {
+        e.preventDefault();
+        setPage(0);
+      } else if (e.key === 'End') {
+        e.preventDefault();
+        setPage(PAGE_COUNT - 1);
+      }
+    });
+
+    // Global keyboard navigation
+    document.addEventListener('keydown', (e) => {
+      if (e.target === dragDot || e.target.classList.contains('dot')) return;
+      
+      if (e.key === 'ArrowLeft' && currentIndex > 0) {
+        setPage(currentIndex - 1);
+      } else if (e.key === 'ArrowRight' && currentIndex < PAGE_COUNT - 1) {
+        setPage(currentIndex + 1);
+      } else if (e.key === 'Home') {
+        setPage(0);
+      } else if (e.key === 'End') {
+        setPage(PAGE_COUNT - 1);
+      }
+    });
+
+    // Update aria attributes
+    function updateAriaAttributes() {
+      dragDot.setAttribute('aria-valuenow', currentIndex + 1);
+      dots.forEach((dot, index) => {
+        dot.setAttribute('aria-pressed', index === currentIndex);
+      });
+    }
+
+    // Simple swipe gesture support
+    let swipeStartX = 0;
+    let swipeStartY = 0;
+    const swipeThreshold = 50;
+    let isSwipeActive = false;
+
+    pageDisplay.addEventListener('touchstart', (e) => {
+      if (isDragging) return;
+      const touch = e.touches[0];
+      swipeStartX = touch.clientX;
+      swipeStartY = touch.clientY;
+      isSwipeActive = false;
+    });
+
+    pageDisplay.addEventListener('touchmove', (e) => {
+      if (isDragging || isSwipeActive) return;
+      
+      const touch = e.touches[0];
+      const deltaX = touch.clientX - swipeStartX;
+      const deltaY = touch.clientY - swipeStartY;
+      
+      // Only process horizontal swipes
+      if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > swipeThreshold) {
+        e.preventDefault();
+        isSwipeActive = true;
+      }
+    }, { passive: false });
+
+    pageDisplay.addEventListener('touchend', (e) => {
+      if (isDragging) return;
+      
+      if (isSwipeActive) {
+        const touch = e.changedTouches[0];
+        const deltaX = touch.clientX - swipeStartX;
+        const deltaY = touch.clientY - swipeStartY;
+        
+        // Determine if swipe was strong enough to change pages
+        if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > swipeThreshold * 2) {
+          if (deltaX > 0 && currentIndex > 0) {
+            setPage(currentIndex - 1);
+          } else if (deltaX < 0 && currentIndex < PAGE_COUNT - 1) {
+            setPage(currentIndex + 1);
+          }
+        }
+        isSwipeActive = false;
+      }
+    });
+
+    // Simple mouse drag support for desktop (page swiping)
+    let isMouseDragging = false;
+    let mouseStartX = 0;
+    let hasMouseMoved = false;
+
+    pageDisplay.addEventListener('mousedown', (e) => {
+      // Don't interfere with navigator interactions
+      if (e.target.closest('.navigator')) return;
+      
+      isMouseDragging = true;
+      mouseStartX = e.clientX;
+      hasMouseMoved = false;
+      document.body.style.cursor = 'grabbing';
+      e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isMouseDragging) return;
+      
+      const deltaX = e.clientX - mouseStartX;
+      hasMouseMoved = Math.abs(deltaX) > 5;
+    });
+
+    document.addEventListener('mouseup', (e) => {
+      if (isMouseDragging) {
+        isMouseDragging = false;
+        document.body.style.cursor = '';
+        
+        if (hasMouseMoved) {
+          const deltaX = e.clientX - mouseStartX;
+          const threshold = 50; // Simple threshold
+          
+          // Determine target page based on drag distance
+          if (Math.abs(deltaX) > threshold) {
+            if (deltaX > 0 && currentIndex > 0) {
+              setPage(currentIndex - 1);
+            } else if (deltaX < 0 && currentIndex < PAGE_COUNT - 1) {
+              setPage(currentIndex + 1);
+            }
+          }
+        }
+      }
+    });
+
+    // Add mouse wheel support for desktop
+    pageDisplay.addEventListener('wheel', (e) => {
+      if (isDragging) return;
+      
+      e.preventDefault();
+      const deltaX = e.deltaX;
+      const deltaY = e.deltaY;
+      
+      // Use the larger delta (horizontal or vertical)
+      const delta = Math.abs(deltaX) > Math.abs(deltaY) ? deltaX : deltaY;
+      
+      if (Math.abs(delta) > 10) { // Threshold for wheel sensitivity
+        if (delta > 0 && currentIndex < PAGE_COUNT - 1) {
+          setPage(currentIndex + 1);
+        } else if (delta < 0 && currentIndex > 0) {
+          setPage(currentIndex - 1);
+        }
+      }
+    }, { passive: false });
+
+    // Initialize
+    function init() {
+      calculateDotPositions();
+      setPage(0, false);
+      // Set initial background
+      document.body.style.background = pageBackgrounds[0];
+      // Set initial page focus - only show the first page
+      pageContents.forEach((page, index) => {
+        if (index === 0) {
+          page.classList.add('active-page');
+        } else {
+          page.classList.remove('active-page');
+        }
+      });
+    }
+
+    // Recalculate positions on resize
+    let resizeTimeout;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(() => {
+        calculateDotPositions();
+        setPage(currentIndex, false);
+      }, 100);
+    });
+
+    // Initialize when DOM is ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      setTimeout(init, 10); // Small delay to ensure layout is complete
+    }
+  </script>
+</body>
+</html>
