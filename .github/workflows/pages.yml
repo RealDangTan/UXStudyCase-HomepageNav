@@ -2,7 +2,7 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "copilot/fix-146e109c-720d-476c-8edc-01dd43bc3b95" ]
   workflow_dispatch:
 
 permissions:
